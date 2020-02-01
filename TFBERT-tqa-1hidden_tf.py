@@ -8,7 +8,6 @@ if device_name != '/device:GPU:0':
   raise SystemError('GPU device not found')
 print('Found GPU at: {}'.format(device_name))
 
-import gc
 import os
 import sys
 import numpy as np
@@ -29,6 +28,19 @@ BERT_PATH = "./transformers/bert-base-uncased/"
 MAX_SEQUENCE_LENGTH = 512
 SEED = 19
 
+try:
+  bert_base_uncased = TFBertModel.from_pretrained(BERT_PATH) 
+except:
+  bert_base_uncased = TFBertModel.from_pretrained("bert-base-uncased")
+  bert_base_uncased.save_pretrained(BERT_PATH)
+
+try:
+  bert_tokenizer = BertTokenizer.from_pretrained(BERT_PATH)
+except:
+  bert_tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+  bert_tokenizer.save_vocabulary(BERT_PATH)  
+
+
 ####################################################################################################### 
 # loading data
 #######################################################################################################
@@ -39,6 +51,7 @@ train_targets = train.loc[:, target_columns]
 train_tqa_bert_encoded = compute_sentece_pair_embedding(train, which="tqa", bert_path=BERT_PATH)
 train_tqa_bert_encoded.reset_index(inplace=True)
 bert_columns = train_tqa_bert_encoded.columns[1:]
+
 
 ####################################################################################################### 
 # training of the output layer
@@ -136,6 +149,7 @@ train_inputs = compute_input_arrays_tqa(train, tokenizer, MAX_SEQUENCE_LENGTH)
 kf = MultilabelStratifiedKFold(n_splits=NUM_FOLDS, random_state=SEED, shuffle=True)
 kf_split = kf.split(train ,train.loc[:, target_columns])
 
+all_bert_models = dict()
 kfold_scores = list()
 for fold, (train_idx, valid_idx) in enumerate(kf_split):
   print("#"*120)
@@ -162,10 +176,9 @@ for fold, (train_idx, valid_idx) in enumerate(kf_split):
   model.fit(_train_inputs, _train_targets, epochs=EPOCHS, batch_size=BATCH_SIZE, shuffle=True,
             validation_data=(_valid_inputs, _valid_targets),
             callbacks=[callback])
+  all_bert_models[fold] = model
   kfold_scores.append(callback.best)
   model.save(MODELS_PATH + f"bert_tqa_1h_fold{fold}.h5")
-  del model
-  gc.collect()
 
 print(f"k-fold rho values: {kfold_scores}")
 print(f"mean rho value: {np.mean(kfold_scores)}")
