@@ -15,7 +15,7 @@ class EarlyStopping(tf.keras.callbacks.Callback):
                batch_size=16,
                min_delta=0,
                patience=0,
-               verbose=0,
+               verbose=1,
                mode='auto',
                restore_best_weights=False):
 
