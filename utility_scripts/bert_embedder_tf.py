@@ -2,11 +2,10 @@ import numpy as np
 import pandas as pd 
 import math
 from tqdm import tqdm
-import torch
-from torch.utils.data import TensorDataset, DataLoader
-from transformers import BertTokenizer, BertConfig, BertModel
+import tensorflow as tf
+from transformers import BertTokenizer, BertConfig, TFBertModel
 
-BATCH_SIZE = 8
+BERT_PATH = "/kaggle/input/transformers/bert-base-uncased/"
 MAX_SEQUENCE_LENGTH = 512
 # number of hidden layer of bert to use
 N_HIDDEN_LAYERS = 1
@@ -85,9 +84,9 @@ def compute_input_arrays_qa(data, tokenizer, max_sequence_length):
         input_masks.append(masks)
         input_segments.append(segments)
         
-    return [torch.tensor(input_ids, dtype=torch.long), 
-            torch.tensor(input_masks, dtype=torch.long), 
-            torch.tensor(input_segments, dtype=torch.long)]
+    return [np.asarray(input_ids, dtype=np.int32), 
+            np.asarray(input_masks, dtype=np.int32), 
+            np.asarray(input_segments, dtype=np.int32)]
 
 ##################################################################################################
 # functions to compute input arrays in bert format for a sentence pair: title + question & answer
@@ -173,9 +172,9 @@ def compute_input_arrays_tqa(data, tokenizer, max_sequence_length):
         input_masks.append(masks)
         input_segments.append(segments)
         
-    return [torch.tensor(input_ids, dtype=torch.long), 
-            torch.tensor(input_masks, dtype=torch.long), 
-            torch.tensor(input_segments, dtype=torch.long)]
+    return [np.asarray(input_ids, dtype=np.int32), 
+            np.asarray(input_masks, dtype=np.int32), 
+            np.asarray(input_segments, dtype=np.int32)]
 
 ##################################################################################################
 # functions to compute input arrays in bert format for a single sentence
@@ -224,55 +223,70 @@ def compute_input_arrays(data, column, tokenizer, max_sequence_length):
         input_masks.append(masks)
         input_segments.append(segments)
         
-    return [torch.tensor(input_ids, dtype=torch.long), 
-            torch.tensor(input_masks, dtype=torch.long), 
-            torch.tensor(input_segments, dtype=torch.long)]
+    return [np.asarray(input_ids, dtype=np.int32), 
+            np.asarray(input_masks, dtype=np.int32), 
+            np.asarray(input_segments, dtype=np.int32)]
 
 ##################################################################################################
-# computation of bert encoding
+# bert instantiator
 ##################################################################################################
 
-def compute_bert_encoding(input_word_ids, input_masks, input_segments, device,
-                          n_hidden_layers=1, bert_path="bert-base-uncased-", batch_size=BATCH_SIZE):
-    data = TensorDataset(input_word_ids, input_masks, input_segments)
-    data_loader = DataLoader(data, batch_size=batch_size)
-
+def get_bert_hidden(n_hidden_layers=1, bert_path=BERT_PATH):
+    input_word_ids = tf.keras.layers.Input(
+        (MAX_SEQUENCE_LENGTH,), dtype=tf.int32, name='input_word_ids')
+    input_masks = tf.keras.layers.Input(
+        (MAX_SEQUENCE_LENGTH,), dtype=tf.int32, name='input_masks')
+    input_segments = tf.keras.layers.Input(
+        (MAX_SEQUENCE_LENGTH,), dtype=tf.int32, name='input_segments')
+    
     config = BertConfig()
     config.output_hidden_states = True
-    model = BertModel.from_pretrained(bert_path, config=config)
-    model.cuda()
-    model.zero_grad()
+    bert_layer = TFBertModel.from_pretrained(bert_path, config=config)
+    hidden_layers = bert_layer([input_word_ids, input_masks, input_segments])[-1]  
+    
+    selected_hidden_layers = list()
+    for i in range(n_hidden_layers):
+        layer_idx = -(i+1)
+        selected_hidden_layers.append(
+            tf.reshape(hidden_layers[layer_idx][:,0], (-1,768))
+        )
+    if n_hidden_layers > 1:
+        output_layer = tf.keras.layers.concatenate(inputs=selected_hidden_layers, axis=1)
+    else:
+        output_layer = selected_hidden_layers[0]
+    
+    bert_model = tf.keras.models.Model(inputs=[input_word_ids, input_masks, input_segments], 
+                                       outputs=output_layer)
+    return bert_model
 
-    encoded_batches = list()
-    for batch in tqdm(data_loader):
-        _input_word_ids = batch[0].to(device)
-        _input_masks = batch[1].to(device)
-        _input_segments = batch[2].to(device)
-        with torch.no_grad():
-            hidden_layers = model(_input_word_ids, _input_masks, _input_segments)[-1]
-        selected_layers = list()
-        for i in range(n_hidden_layers):
-            layer_idx = -(i+1)
-            selected_layers.append(hidden_layers[layer_idx][:,0])
-        hidden_concat = torch.cat(selected_layers, dim=1)
-        encoded_batches.append(hidden_concat.detach().cpu().numpy())
-
-    return np.concatenate(encoded_batches, axis=0)
+def get_bert_output(bert_path=BERT_PATH):
+    input_word_ids = tf.keras.layers.Input(
+        (MAX_SEQUENCE_LENGTH,), dtype=tf.int32, name='input_word_ids')
+    input_masks = tf.keras.layers.Input(
+        (MAX_SEQUENCE_LENGTH,), dtype=tf.int32, name='input_masks')
+    input_segments = tf.keras.layers.Input(
+        (MAX_SEQUENCE_LENGTH,), dtype=tf.int32, name='input_segments')
+    
+    bert_layer = TFBertModel.from_pretrained(bert_path)
+    _,sequence_output = bert_layer([input_word_ids, input_masks, input_segments])
+        
+    bert_model = tf.keras.models.Model(inputs=[input_word_ids, input_masks, input_segments], 
+                                       outputs=sequence_output)
+    return bert_model
 
 ##################################################################################################
 # main functions
 ##################################################################################################
 
-def compute_sentece_pair_embedding(data, device, which="qa", n_hidden_layers=N_HIDDEN_LAYERS, 
-                                   bert_path="bert-base-uncased", batch_size=BATCH_SIZE):
+def compute_sentece_pair_embedding(data, which="qa", n_hidden_layers=N_HIDDEN_LAYERS, 
+                                   bert_path=BERT_PATH):
     tokenizer = BertTokenizer(bert_path+'vocab.txt', True)
     if which == "qa":
         data_inputs = compute_input_arrays_qa(data, tokenizer, MAX_SEQUENCE_LENGTH)
     elif which == "tqa":
         data_inputs = compute_input_arrays_tqa(data, tokenizer, MAX_SEQUENCE_LENGTH)
-    data_bert_encoded = compute_bert_encoding(data_inputs[0], data_inputs[1], data_inputs[2], 
-                                              device, n_hidden_layers=n_hidden_layers, 
-                                              bert_path=bert_path, batch_size=batch_size)
+    bert_model = get_bert_hidden(n_hidden_layers, bert_path=bert_path)
+    data_bert_encoded = bert_model.predict(data_inputs, batch_size=8, verbose=1)
     column_names = list()
     for i in range(n_hidden_layers):
         layer_idx = 12-i
@@ -282,13 +296,11 @@ def compute_sentece_pair_embedding(data, device, which="qa", n_hidden_layers=N_H
                                         index=data.qa_id)
     return data_df_bert_encoded
 
-def compute_sentence_embedding(data, column, device, n_hidden_layers=N_HIDDEN_LAYERS, 
-                               bert_path="bert-base-uncased", batch_size=BATCH_SIZE):
+def compute_sentence_embedding(data, column, n_hidden_layers=N_HIDDEN_LAYERS, bert_path=BERT_PATH):
     tokenizer = BertTokenizer(bert_path+'vocab.txt', True)
     data_inputs = compute_input_arrays(data, column, tokenizer, MAX_SEQUENCE_LENGTH)
-    data_bert_encoded = compute_bert_encoding(data_inputs[0], data_inputs[1], data_inputs[2], 
-                                              device, n_hidden_layers=n_hidden_layers, 
-                                              bert_path=bert_path, batch_size=batch_size)
+    bert_model = get_bert_hidden(n_hidden_layers, bert_path=bert_path)
+    data_bert_encoded = bert_model.predict(data_inputs, batch_size=8, verbose=1)
     column_names = list()
     for i in range(n_hidden_layers):
         layer_idx = 12-i
