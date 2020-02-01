@@ -326,6 +326,7 @@ kf = MultilabelStratifiedKFold(n_splits=NUM_FOLDS, random_state=SEED, shuffle=Tr
 kf_split = kf.split(train ,train.loc[:, target_columns])
 kfold_rhos = list()
 for fold, (train_idx, valid_idx) in enumerate(kf_split):
+	print(f" fold: {fold} ".center(100, "#"))
 	_train_inputs = [train_inputs[i][train_idx] for i in range(3)]
 	_train_targets = train_targets.loc[train_idx, :].values
 
@@ -334,6 +335,7 @@ for fold, (train_idx, valid_idx) in enumerate(kf_split):
 
 	model = BERTRegressor(bert_path=BERT_PATH, dropout=DROPOUT, hidden_size=768, output_size=30)
 	model.load_state_dict(all_models[fold].state_dict(), strict=False)
+	model.cuda()
 	model,best_rho = train_bert(model, _train_inputs, _train_targets, 
 								_valid_inputs, _valid_targets, EPOCHS, BATCH_SIZE, device,
 								patience=3, restore_best_state=True)
