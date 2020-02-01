@@ -114,8 +114,8 @@ def train_epoch_mlp(train_loader, model, optimizer, device, scheduler=None):
 	model.train()
 	for batch in train_loader:
 		train_data,train_targets = batch
-		train_data.to(device)
-		train_targets.to(device)
+		train_data = train_data.to(device)
+		train_targets = train_targets.to(device)
 
 		optimizer.zero_grad()
 		predictions = model(train_data)
@@ -134,8 +134,8 @@ def eval_epoch_mlp(valid_loader, model, device):
 	model.eval()
 	for batch in valid_loader:
 		valid_data,valid_targets = batch
-		valid_data.to(device)
-		valid_targets.to(device)
+		valid_data = valid_data.to(device)
+		valid_targets = valid_targets.to(device)
 		with torch.no_grad():
 			predictions = model(valid_data)
 		loss = loss_function(predictions, valid_targets.float())
@@ -153,6 +153,7 @@ def train_mlp(model_class, train_data, train_targets,
 			  valid_data, valid_targets, epochs, batch_size, device,
 			  patience=0, restore_best_state=True):
 	model = model_class(dropout=DROPOUT, input_size=768, output_size=30)
+	model.cuda()
 	train_dataset = TensorDataset(torch.tensor(train_data), torch.tensor(train_targets))
 	train_sampler = RandomSampler(train_dataset)
 	train_loader = DataLoader(train_dataset, sampler=train_sampler, batch_size=batch_size)
@@ -228,10 +229,10 @@ def train_epoch_bert(train_loader, model, optimizer, device, scheduler=None):
 	model.train()
 	for batch in train_loader:
 		input_ids,input_masks,input_segments,train_targets = batch
-		input_ids.to(device)
-		input_masks.to(device)
-		input_segments.to(device)
-		train_targets.to(device)
+		input_ids = input_ids.to(device)
+		input_masks = input_masks.to(device)
+		input_segments = input_segments.to(device)
+		train_targets = train_targets.to(device)
 
 		optimizer.zero_grad()
 		predictions = model(input_ids, input_masks, input_segments)
@@ -251,10 +252,10 @@ def eval_epoch_bert(valid_loader, model, device):
 	model.eval()
 	for batch in valid_loader:
 		input_ids,input_masks,input_segments,valid_targets = batch
-		input_ids.to(device)
-		input_masks.to(device)
-		input_segments.to(device)
-		valid_targets.to(device)
+		input_ids = input_ids.to(device)
+		input_masks = input_masks.to(device)
+		input_segments = input_segments.to(device)
+		valid_targets = valid_targets.to(device)
 		with torch.no_grad():
 			predictions = model(input_ids, input_masks, input_segments)
 		loss = loss_function(predictions, valid_targets.float())
