@@ -77,7 +77,7 @@ class BERTRegressor(torch.nn.Module):
 	def __init__(self, bert_path, dropout, hidden_size, output_size):
 		super().__init__()
 		config = BertConfig()
-    	config.output_hidden_states = True
+		config.output_hidden_states = True
 		self.bert_layer = BertModel.from_pretrained(bert_path, config=config)
 		self.dropout_layer = torch.nn.Dropout(dropout)
 		self.linear_layer = torch.nn.Linear(hidden_size, output_size)
@@ -344,7 +344,7 @@ for fold, (train_idx, valid_idx) in enumerate(kf_split):
 								_valid_inputs, _valid_targets, EPOCHS, BATCH_SIZE, device,
 								patience=2, restore_best_state=True)
 	kfold_rhos.append(best_rho)
-	torch.save(model.state_dict(), MODELS_PATH + f"bert_tqa_4h_fold{fold}.pt")
+	torch.save(model.state_dict(), MODELS_PATH + f"BERT-tqa-1hidden.py_4h_fold{fold}.pt")
 	del model; torch.cuda.empty_cache(); gc.collect()
 	
 print(kfold_rhos)
