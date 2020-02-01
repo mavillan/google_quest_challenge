@@ -333,6 +333,7 @@ kf = MultilabelStratifiedKFold(n_splits=NUM_FOLDS, random_state=SEED, shuffle=Tr
 kf_split = kf.split(train ,train.loc[:, target_columns])
 kfold_rhos = list()
 for fold, (train_idx, valid_idx) in enumerate(kf_split):
+	print("\n")
 	print(f" fold: {fold} ".center(100, "#"))
 	_train_inputs = [train_inputs[i][train_idx] for i in range(3)]
 	_train_targets = train_targets.loc[train_idx, :].values
@@ -346,7 +347,7 @@ for fold, (train_idx, valid_idx) in enumerate(kf_split):
 	include_layers = list()
 	for layer in range(11, -1, -1):
 		include_layers += [layer]
-		print(f"finetuning layers: {include_layers}".center("-", 100))
+		print(f" finetuning layers: {include_layers}".center(100, "-"))
 		model = unfreeze_bert_layers(model, include_layers)
 		model,best_rho = train_bert(model, _train_inputs, _train_targets, 
 									_valid_inputs, _valid_targets, EPOCHS, BATCH_SIZE, device,
