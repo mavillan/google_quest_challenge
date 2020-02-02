@@ -155,7 +155,7 @@ def get_bert_inputs_tqa(title, question, answer, tokenizer, max_sequence_length)
                                                                 question_tokens, 
                                                                 answer_tokens,
                                                                 max_sequence_length)
-    all_tokens = ["[CLS]"] + title_tokens + ["[SPECIAL_TOKEN]"] + question_tokens  + ["[SEP]"] + answer_tokens + ["[SEP]"]
+    all_tokens = ["[CLS]"] + title_tokens + ["[unused0]"] + question_tokens  + ["[SEP]"] + answer_tokens + ["[SEP]"]
     input_ids = get_ids_tqa(all_tokens, tokenizer, max_sequence_length)
     input_masks = get_masks_tqa(all_tokens, max_sequence_length)
     input_segments = get_segments_tqa(all_tokens, max_sequence_length)
