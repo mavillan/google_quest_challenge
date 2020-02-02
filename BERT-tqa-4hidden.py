@@ -346,3 +346,8 @@ for fold, (train_idx, valid_idx) in enumerate(kf_split):
 	
 print(kfold_rhos)
 print(f"Mean kfold_rhos: {np.mean(kfold_rhos)}")
+
+handler = open("bert_tqa_4h_mse.info", "w")
+handler.write(f"kfold_rhos: {kfold_rhos}\n")
+handler.write(f"mean kfold_rho: {np.mean(kfold_rhos)}")
+handler.close()
