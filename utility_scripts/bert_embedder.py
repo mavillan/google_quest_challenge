@@ -232,67 +232,46 @@ def compute_input_arrays(data, column, tokenizer, max_sequence_length):
 # computation of bert encoding
 ##################################################################################################
 
-def compute_bert_encoding(input_word_ids, input_masks, input_segments, device,
-                          n_hidden_layers=1, bert_path="bert-base-uncased-", batch_size=BATCH_SIZE):
+def compute_bert_encoding(input_word_ids, input_masks, input_segments, 
+                          model, device, batch_size=BATCH_SIZE):
     data = TensorDataset(input_word_ids, input_masks, input_segments)
     data_loader = DataLoader(data, batch_size=batch_size)
-
-    config = BertConfig()
-    config.output_hidden_states = True
-    model = BertModel.from_pretrained(bert_path, config=config)
     model.cuda()
     model.zero_grad()
-
     encoded_batches = list()
     for batch in tqdm(data_loader):
         _input_word_ids = batch[0].to(device)
         _input_masks = batch[1].to(device)
         _input_segments = batch[2].to(device)
         with torch.no_grad():
-            hidden_layers = model(_input_word_ids, _input_masks, _input_segments)[-1]
-        selected_layers = list()
-        for i in range(n_hidden_layers):
-            layer_idx = -(i+1)
-            selected_layers.append(hidden_layers[layer_idx][:,0])
-        hidden_concat = torch.cat(selected_layers, dim=1)
-        encoded_batches.append(hidden_concat.detach().cpu().numpy())
-
+            model_output = model(_input_word_ids, _input_masks, _input_segments)
+        encoded_batches.append(model_output.detach().cpu().numpy())
     return np.concatenate(encoded_batches, axis=0)
 
 ##################################################################################################
 # main functions
 ##################################################################################################
 
-def compute_sentece_pair_embedding(data, device, which="qa", n_hidden_layers=N_HIDDEN_LAYERS, 
-                                   bert_path="bert-base-uncased", batch_size=BATCH_SIZE):
+def compute_sentece_pair_embedding(data, model, device, bert_path, which="qa", batch_size=BATCH_SIZE):
     tokenizer = BertTokenizer(bert_path+'vocab.txt', True)
     if which == "qa":
         data_inputs = compute_input_arrays_qa(data, tokenizer, MAX_SEQUENCE_LENGTH)
     elif which == "tqa":
         data_inputs = compute_input_arrays_tqa(data, tokenizer, MAX_SEQUENCE_LENGTH)
     data_bert_encoded = compute_bert_encoding(data_inputs[0], data_inputs[1], data_inputs[2], 
-                                              device, n_hidden_layers=n_hidden_layers, 
-                                              bert_path=bert_path, batch_size=batch_size)
-    column_names = list()
-    for i in range(n_hidden_layers):
-        layer_idx = 12-i
-        column_names.extend([f"h{layer_idx}_{h}" for h in range(1, 769)])
+                                              model, device, batch_size=batch_size)
+    column_names = [f"b{idx}" for idx in range(data_bert_encoded.shape[1])]
     data_df_bert_encoded = pd.DataFrame(data_bert_encoded,
                                         columns=column_names,
                                         index=data.qa_id)
     return data_df_bert_encoded
 
-def compute_sentence_embedding(data, column, device, n_hidden_layers=N_HIDDEN_LAYERS, 
-                               bert_path="bert-base-uncased", batch_size=BATCH_SIZE):
+def compute_sentence_embedding(data, column, model, device, bert_path, batch_size=BATCH_SIZE):
     tokenizer = BertTokenizer(bert_path+'vocab.txt', True)
     data_inputs = compute_input_arrays(data, column, tokenizer, MAX_SEQUENCE_LENGTH)
     data_bert_encoded = compute_bert_encoding(data_inputs[0], data_inputs[1], data_inputs[2], 
-                                              device, n_hidden_layers=n_hidden_layers, 
-                                              bert_path=bert_path, batch_size=batch_size)
-    column_names = list()
-    for i in range(n_hidden_layers):
-        layer_idx = 12-i
-        column_names.extend([f"h{layer_idx}_{h}" for h in range(1, 769)])
+                                              model, device, batch_size=batch_size)
+    column_names = [f"b{idx}" for idx in range(data_bert_encoded.shape[1])]
     data_df_bert_encoded = pd.DataFrame(data_bert_encoded,
                                         columns=column_names,
                                         index=data.qa_id)
