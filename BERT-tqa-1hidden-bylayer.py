@@ -30,7 +30,7 @@ MODELS_PATH = "./models/"
 BERT_PATH = "./transformers/bert-base-uncased/"
 MAX_SEQUENCE_LENGTH = 512
 
-SEED = 19
+SEED = 42
 np.random.seed(SEED)
 torch.manual_seed(SEED)
 torch.cuda.manual_seed(SEED)
@@ -225,7 +225,7 @@ print(f"Mean kfold_rhos: {np.mean(kfold_rhos)}")
 #######################################################################################################
 DROPOUT = 0.2
 LEARNING_RATE = 2e-5
-EPOCHS = 5
+EPOCHS = 2 # epochs per layer
 BATCH_SIZE = 8
 
 def train_epoch_bert(train_loader, model, optimizer, device, scheduler=None):
@@ -273,7 +273,7 @@ def eval_epoch_bert(valid_loader, model, device):
 	valid_rho = compute_spearmanr(targets, predictions)
 	return valid_loss, valid_rho
 
-def train_bert(model, train_inputs, train_targets, 
+def train_bert(model, optimizer, train_inputs, train_targets, 
 			   valid_inputs, valid_targets, epochs, batch_size, device,
 			   patience=0, restore_best_state=True):
 	train_dataset = TensorDataset(train_inputs[0], 
@@ -290,7 +290,6 @@ def train_bert(model, train_inputs, train_targets,
 	valid_sampler = RandomSampler(valid_dataset)
 	valid_loader = DataLoader(valid_dataset, sampler=valid_sampler, batch_size=batch_size)
 
-	optimizer = torch.optim.AdamW(model.parameters(), LEARNING_RATE)
 	scheduler = get_linear_schedule_with_warmup(optimizer,
 												num_warmup_steps = 0,
 												num_training_steps = len(train_loader)*epochs)
@@ -322,7 +321,8 @@ def train_bert(model, train_inputs, train_targets,
 			if restore_best_state:
 				best_model_state = model.state_dict()
 				best_optimizer_state = optimizer.state_dict()
-	return model,best_rho
+
+	return model, optimizer, best_rho
 
 tokenizer = BertTokenizer(BERT_PATH+'vocab.txt', True)
 train_inputs = compute_input_arrays_tqa(train, tokenizer, MAX_SEQUENCE_LENGTH)
@@ -341,16 +341,17 @@ for fold, (train_idx, valid_idx) in enumerate(kf_split):
 	model = BERTRegressor(bert_path=BERT_PATH, dropout=DROPOUT, hidden_size=768, output_size=30)
 	model.load_state_dict(all_models[fold].state_dict(), strict=False)
 	model.cuda()
+	optimizer = torch.optim.AdamW(model.parameters(), LEARNING_RATE)
 	include_layers = list()
 	for layer in range(11, -1, -1):
 		include_layers += [layer]
-		print(f" finetuning layers: {include_layers}".center(100, "-"))
+		print(f" finetuning layers: {include_layers} ".center(100, "-"))
 		model = unfreeze_bert_layers(model, include_layers)
-		model,best_rho = train_bert(model, _train_inputs, _train_targets, 
-									_valid_inputs, _valid_targets, EPOCHS, BATCH_SIZE, device,
-									patience=2, restore_best_state=True)
+		model,optimizer,best_rho = train_bert(model, optimizer, _train_inputs, _train_targets, 
+											  _valid_inputs, _valid_targets, EPOCHS, BATCH_SIZE, 
+											  device, patience=1, restore_best_state=True)
 	kfold_rhos.append(best_rho)
-	torch.save(model.state_dict(), MODELS_PATH + f"bert_tqa_fold{fold}_bylayer.pt")
+	torch.save(model.state_dict(), MODELS_PATH + f"bert_tqa_1h_fold{fold}_bylayer.pt")
 	del model; torch.cuda.empty_cache(); gc.collect()
 	
 print(kfold_rhos)

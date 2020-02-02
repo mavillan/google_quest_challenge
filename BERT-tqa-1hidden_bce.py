@@ -30,7 +30,7 @@ MODELS_PATH = "./models/"
 BERT_PATH = "./transformers/bert-base-uncased/"
 MAX_SEQUENCE_LENGTH = 512
 
-SEED = 19
+SEED = 42
 np.random.seed(SEED)
 torch.manual_seed(SEED)
 torch.cuda.manual_seed(SEED)
@@ -211,9 +211,6 @@ for fold, (train_idx, valid_idx) in enumerate(kf_split):
 print(kfold_rhos)
 print(f"Mean kfold_rhos: {np.mean(kfold_rhos)}")
 
-for fold,model in enumerate(all_models):
-	torch.save(model.state_dict(), MODELS_PATH + f"output_tqa_fold{fold}.pt")
-
 ####################################################################################################### 
 # finetuning of the bert layer
 #######################################################################################################
@@ -338,7 +335,7 @@ for fold, (train_idx, valid_idx) in enumerate(kf_split):
 								_valid_inputs, _valid_targets, EPOCHS, BATCH_SIZE, device,
 								patience=2, restore_best_state=True)
 	kfold_rhos.append(best_rho)
-	torch.save(model.state_dict(), MODELS_PATH + f"bert_tqa_fold{fold}.pt")
+	torch.save(model.state_dict(), MODELS_PATH + f"bert_tqa_fold{fold}_bce.pt")
 	del model; torch.cuda.empty_cache(); gc.collect()
 	
 print(kfold_rhos)
