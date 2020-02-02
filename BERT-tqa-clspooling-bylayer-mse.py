@@ -86,6 +86,15 @@ class BERTRegressor(torch.nn.Module):
 		x = self.linear_layer(x)
 		return self.activation(x)
 
+def unfreeze_bert_layers(model, layers):
+	for layer_name,parameters in model.named_parameters():
+		if "bert_layer" in layer_name:
+			if any([f".layer.{layer_number}." in layer_name for layer_number in layers]):
+				parameters.requires_grad = True
+			else:
+				parameters.requires_grad = False
+	return model
+
 ####################################################################################################### 
 # loading data
 #######################################################################################################
@@ -216,7 +225,7 @@ print(f"Mean kfold_rhos: {np.mean(kfold_rhos)}")
 #######################################################################################################
 DROPOUT = 0.2
 LEARNING_RATE = 2e-5
-EPOCHS = 10
+EPOCHS = 2 # epochs per layer
 BATCH_SIZE = 8
 
 def train_epoch_bert(train_loader, model, optimizer, device, scheduler=None):
@@ -264,7 +273,7 @@ def eval_epoch_bert(valid_loader, model, device):
 	valid_rho = compute_spearmanr(targets, predictions)
 	return valid_loss, valid_rho
 
-def train_bert(model, train_inputs, train_targets, 
+def train_bert(model, optimizer, train_inputs, train_targets, 
 			   valid_inputs, valid_targets, epochs, batch_size, device,
 			   patience=0, restore_best_state=True):
 	train_dataset = TensorDataset(train_inputs[0], 
@@ -281,7 +290,6 @@ def train_bert(model, train_inputs, train_targets,
 	valid_sampler = RandomSampler(valid_dataset)
 	valid_loader = DataLoader(valid_dataset, sampler=valid_sampler, batch_size=batch_size)
 
-	optimizer = torch.optim.AdamW(model.parameters(), LEARNING_RATE)
 	scheduler = get_linear_schedule_with_warmup(optimizer,
 												num_warmup_steps = 0,
 												num_training_steps = len(train_loader)*epochs)
@@ -313,7 +321,8 @@ def train_bert(model, train_inputs, train_targets,
 			if restore_best_state:
 				best_model_state = model.state_dict()
 				best_optimizer_state = optimizer.state_dict()
-	return model,best_rho
+
+	return model, optimizer, best_rho
 
 tokenizer = BertTokenizer(BERT_PATH+'vocab.txt', True)
 train_inputs = compute_input_arrays_tqa(train, tokenizer, MAX_SEQUENCE_LENGTH)
@@ -321,6 +330,7 @@ train_inputs = compute_input_arrays_tqa(train, tokenizer, MAX_SEQUENCE_LENGTH)
 kf_split = GroupKFold(n_splits=NUM_FOLDS).split(X=train, groups=train.question_body)
 kfold_rhos = list()
 for fold, (train_idx, valid_idx) in enumerate(kf_split):
+	print("\n")
 	print(f" fold: {fold} ".center(100, "#"))
 	_train_inputs = [train_inputs[i][train_idx] for i in range(3)]
 	_train_targets = train_targets.loc[train_idx, :].values
@@ -331,17 +341,24 @@ for fold, (train_idx, valid_idx) in enumerate(kf_split):
 	model = BERTRegressor(bert_path=BERT_PATH, dropout=DROPOUT, hidden_size=768, output_size=30)
 	model.load_state_dict(all_models[fold].state_dict(), strict=False)
 	model.cuda()
-	model,best_rho = train_bert(model, _train_inputs, _train_targets, 
-								_valid_inputs, _valid_targets, EPOCHS, BATCH_SIZE, device,
-								patience=2, restore_best_state=True)
+	optimizer = torch.optim.AdamW(model.parameters(), LEARNING_RATE)
+	include_layers = list()
+	for layer in range(11, -1, -1):
+		include_layers += [layer]
+		print(f" finetuning layers: {include_layers} ".center(100, "-"))
+		model = unfreeze_bert_layers(model, include_layers)
+		model,optimizer,best_rho = train_bert(model, optimizer, _train_inputs, _train_targets, 
+											  _valid_inputs, _valid_targets, EPOCHS, BATCH_SIZE, 
+											  device, patience=1, restore_best_state=True)
 	kfold_rhos.append(best_rho)
-	torch.save(model.state_dict(), MODELS_PATH + f"bert_tqa_fold{fold}_mse.pt")
+	torch.save(model.state_dict(), MODELS_PATH + f"bert_tqa_1h_fold{fold}_bylayer.pt")
 	del model; torch.cuda.empty_cache(); gc.collect()
 	
 print(kfold_rhos)
 print(f"Mean kfold_rhos: {np.mean(kfold_rhos)}")
 
-handler = open("bert_tqa_1h_mse.info", "w")
+fname = f"{os.path.basename(__file__).split('.')[0]}.info"
+handler = open(fname, "w")
 handler.write(f"kfold_rhos: {kfold_rhos}\n")
-handler.write(f"mean kfold_rho: {np.mean(kfold_rhos)}")
+handler.write(f"mean kfold_rho: {np.mean(kfold_rhos)}\n")
 handler.close()

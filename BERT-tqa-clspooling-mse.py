@@ -58,7 +58,7 @@ def compute_spearmanr(trues, preds):
 	return np.nanmean(rhos)
 
 def loss_function(predictions, targets):
-	return torch.nn.BCELoss()(predictions, targets)
+	return torch.nn.MSELoss()(predictions, targets)
 
 class OutputMLP(torch.nn.Module):
 	def __init__(self, dropout, input_size, output_size):
@@ -335,13 +335,14 @@ for fold, (train_idx, valid_idx) in enumerate(kf_split):
 								_valid_inputs, _valid_targets, EPOCHS, BATCH_SIZE, device,
 								patience=2, restore_best_state=True)
 	kfold_rhos.append(best_rho)
-	torch.save(model.state_dict(), MODELS_PATH + f"bert_tqa_fold{fold}_bce.pt")
+	torch.save(model.state_dict(), MODELS_PATH + f"bert_tqa_fold{fold}_mse.pt")
 	del model; torch.cuda.empty_cache(); gc.collect()
 	
 print(kfold_rhos)
 print(f"Mean kfold_rhos: {np.mean(kfold_rhos)}")
 
-handler = open("bert_tqa_1h_bce.info", "w")
+fname = f"{os.path.basename(__file__).split('.')[0]}.info"
+handler = open(fname, "w")
 handler.write(f"kfold_rhos: {kfold_rhos}\n")
-handler.write(f"mean kfold_rho: {np.mean(kfold_rhos)}")
+handler.write(f"mean kfold_rho: {np.mean(kfold_rhos)}\n")
 handler.close()
