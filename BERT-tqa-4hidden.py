@@ -23,7 +23,6 @@ from transformers import get_linear_schedule_with_warmup
 
 ### custom scripts
 sys.path.append("./utility_scripts/")
-from ml_stratifiers import MultilabelStratifiedKFold
 from bert_embedder import compute_input_arrays_tqa, compute_sentece_pair_embedding
 ###
 
@@ -31,7 +30,7 @@ MODELS_PATH = "./models/"
 BERT_PATH = "./transformers/bert-base-uncased/"
 MAX_SEQUENCE_LENGTH = 512
 
-SEED = 2
+SEED = 19
 np.random.seed(SEED)
 torch.manual_seed(SEED)
 torch.cuda.manual_seed(SEED)
@@ -198,8 +197,7 @@ def train_mlp(model_class, train_data, train_targets,
 				best_optimizer_state = optimizer.state_dict()
 	return model,best_rho
 
-kf = MultilabelStratifiedKFold(n_splits=NUM_FOLDS, random_state=SEED, shuffle=True)
-kf_split = kf.split(train ,train.loc[:, target_columns])
+kf_split = GroupKFold(n_splits=NUM_FOLDS).split(X=train, groups=train.question_body)
 kfold_rhos = list()
 all_models = list()
 for fold, (train_idx, valid_idx) in enumerate(kf_split):
@@ -326,8 +324,7 @@ def train_bert(model, train_inputs, train_targets,
 tokenizer = BertTokenizer(BERT_PATH+'vocab.txt', True)
 train_inputs = compute_input_arrays_tqa(train, tokenizer, MAX_SEQUENCE_LENGTH)
 
-kf = MultilabelStratifiedKFold(n_splits=NUM_FOLDS, random_state=SEED, shuffle=True)
-kf_split = kf.split(train ,train.loc[:, target_columns])
+kf_split = GroupKFold(n_splits=NUM_FOLDS).split(X=train, groups=train.question_body)
 kfold_rhos = list()
 for fold, (train_idx, valid_idx) in enumerate(kf_split):
 	print(f" fold: {fold} ".center(100, "#"))
