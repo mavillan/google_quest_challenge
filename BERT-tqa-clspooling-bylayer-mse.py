@@ -19,7 +19,6 @@ from scipy.stats import spearmanr
 from torch.utils.data import TensorDataset, DataLoader, RandomSampler
 import transformers
 from transformers import BertTokenizer, BertConfig, BertModel
-from transformers import get_linear_schedule_with_warmup
 
 ### custom scripts
 sys.path.append("./utility_scripts/")
@@ -29,6 +28,7 @@ from bert_embedder import compute_input_arrays_tqa, compute_sentece_pair_embeddi
 MODELS_PATH = "./models/" 
 BERT_PATH = "./transformers/bert-base-uncased/"
 MAX_SEQUENCE_LENGTH = 512
+FILENAME = os.path.basename(__file__).split('.')[0]
 
 SEED = 42
 np.random.seed(SEED)
@@ -290,9 +290,6 @@ def train_bert(model, optimizer, train_inputs, train_targets,
 	valid_sampler = RandomSampler(valid_dataset)
 	valid_loader = DataLoader(valid_dataset, sampler=valid_sampler, batch_size=batch_size)
 
-	scheduler = get_linear_schedule_with_warmup(optimizer,
-												num_warmup_steps = 0,
-												num_training_steps = len(train_loader)*epochs)
 	best_model_state = model.state_dict()
 	best_optimizer_state = optimizer.state_dict()
 	best_rho = 0
@@ -301,7 +298,7 @@ def train_bert(model, optimizer, train_inputs, train_targets,
 	
 	for epoch in range(epochs):
 		print(f" epoch: {epoch}".center(100, "-"))
-		train_loss = train_epoch_bert(train_loader, model, optimizer, device, scheduler)
+		train_loss = train_epoch_bert(train_loader, model, optimizer, device)
 		valid_loss,valid_rho = eval_epoch_bert(valid_loader, model, device)
 		elapsed_time = format_time(time.time()-init_time)
 		print(f"elased time: {elapsed_time} - train_loss: {train_loss:.5f} - valid_loss: {valid_loss:.5f} - valid_rho: {valid_rho:5f}")
@@ -351,14 +348,13 @@ for fold, (train_idx, valid_idx) in enumerate(kf_split):
 											  _valid_inputs, _valid_targets, EPOCHS, BATCH_SIZE, 
 											  device, patience=1, restore_best_state=True)
 	kfold_rhos.append(best_rho)
-	torch.save(model.state_dict(), MODELS_PATH + f"bert_tqa_1h_fold{fold}_bylayer.pt")
+	torch.save(model.state_dict(), MODELS_PATH + f"{FILENAME}-{fold}.pt")
 	del model; torch.cuda.empty_cache(); gc.collect()
 	
 print(kfold_rhos)
 print(f"Mean kfold_rhos: {np.mean(kfold_rhos)}")
 
-fname = f"{os.path.basename(__file__).split('.')[0]}.info"
-handler = open(fname, "w")
+handler = open(f"{FILENAME}.info", "w")
 handler.write(f"kfold_rhos: {kfold_rhos}\n")
 handler.write(f"mean kfold_rho: {np.mean(kfold_rhos)}\n")
 handler.close()
