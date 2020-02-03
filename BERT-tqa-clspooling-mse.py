@@ -71,7 +71,16 @@ class OutputMLP(torch.nn.Module):
 		x = self.dropout_layer(input_data)
 		x = self.linear_layer(x)
 		return self.activation(x)
+		
+class BERTEmbedder(torch.nn.Module):
+	def __init__(self, bert_path):
+		super().__init__()
+		self.bert_layer = BertModel.from_pretrained(bert_path)
 	
+	def forward(self, input_word_ids, input_masks, input_segments):
+		x = self.bert_layer(input_word_ids, input_masks, input_segments)[0]
+		return x[:,0]
+
 class BERTRegressor(torch.nn.Module):
 	def __init__(self, bert_path, dropout, hidden_size, output_size):
 		super().__init__()
@@ -93,8 +102,9 @@ train = pd.read_csv("./input/train.csv")
 target_columns = list(train.columns[11:])
 train_targets = train.loc[:, target_columns]
 
-train_tqa_bert_encoded = compute_sentece_pair_embedding(train, device, which="tqa", 
-														n_hidden_layers=1, bert_path=BERT_PATH)
+model = BERTEmbedder(bert_path=BERT_PATH)
+train_tqa_bert_encoded = compute_sentece_pair_embedding(train, model, device, 
+														which="tqa", bert_path=BERT_PATH)
 train_tqa_bert_encoded.reset_index(inplace=True)
 bert_columns = train_tqa_bert_encoded.columns[1:]
 

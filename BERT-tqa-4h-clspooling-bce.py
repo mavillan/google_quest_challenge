@@ -75,28 +75,35 @@ class OutputMLP(torch.nn.Module):
 class BERTEmbedder(torch.nn.Module):
 	def __init__(self, bert_path):
 		super().__init__()
-		self.bert_layer = BertModel.from_pretrained(bert_path)
+		config = BertConfig()
+		config.output_hidden_states = True
+		self.bert_layer = BertModel.from_pretrained(bert_path, config=config)
 	
 	def forward(self, input_word_ids, input_masks, input_segments):
-		x = self.bert_layer(input_word_ids, input_masks, input_segments)[0]
-		h1 = x[:,0,:]
-		h2 = torch.mean(x[:,1:,:], dim=1)
-		return torch.cat([h1, h2], dim=1)
-	
+		hidden_layers = self.bert_layer(input_word_ids, input_masks, input_segments)[-1]
+		hidden_concat = torch.cat([hidden_layers[-1][:,0], 
+								   hidden_layers[-2][:,0], 
+								   hidden_layers[-3][:,0], 
+								   hidden_layers[-4][:,0]], dim=1)
+		return hidden_concat
+
 class BERTRegressor(torch.nn.Module):
 	def __init__(self, bert_path, dropout, hidden_size, output_size):
 		super().__init__()
-		self.bert_layer = BertModel.from_pretrained(bert_path)
+		config = BertConfig()
+		config.output_hidden_states = True
+		self.bert_layer = BertModel.from_pretrained(bert_path, config=config)
 		self.dropout_layer = torch.nn.Dropout(dropout)
 		self.linear_layer = torch.nn.Linear(hidden_size, output_size)
 		self.activation = torch.nn.Sigmoid()
 	
 	def forward(self, input_word_ids, input_masks, input_segments):
-		x = self.bert_layer(input_word_ids, input_masks, input_segments)[0]
-		h1 = x[:,0,:]
-		h2 = torch.mean(x[:,1:,:], dim=1)
-		x = torch.cat([h1, h2], dim=1)
-		x = self.dropout_layer(x)
+		hidden_layers = self.bert_layer(input_word_ids, input_masks, input_segments)[-1]
+		hidden_concat = torch.cat([hidden_layers[-1][:,0], 
+								   hidden_layers[-2][:,0], 
+								   hidden_layers[-3][:,0], 
+								   hidden_layers[-4][:,0]], dim=1)
+		x = self.dropout_layer(hidden_concat)
 		x = self.linear_layer(x)
 		return self.activation(x)
 
@@ -107,8 +114,9 @@ train = pd.read_csv("./input/train.csv")
 target_columns = list(train.columns[11:])
 train_targets = train.loc[:, target_columns]
 
+
 model = BERTEmbedder(bert_path=BERT_PATH)
-train_tqa_bert_encoded = compute_sentece_pair_embedding(train, model, device,
+train_tqa_bert_encoded = compute_sentece_pair_embedding(train, model, device, 
 														which="tqa", bert_path=BERT_PATH)
 train_tqa_bert_encoded.reset_index(inplace=True)
 bert_columns = train_tqa_bert_encoded.columns[1:]
@@ -166,7 +174,7 @@ def eval_epoch_mlp(valid_loader, model, device):
 def train_mlp(model_class, train_data, train_targets, 
 			  valid_data, valid_targets, epochs, batch_size, device,
 			  patience=0, restore_best_state=True):
-	model = model_class(dropout=DROPOUT, input_size=1536, output_size=30)
+	model = model_class(dropout=DROPOUT, input_size=3072, output_size=30)
 	model.cuda()
 	train_dataset = TensorDataset(torch.tensor(train_data), torch.tensor(train_targets))
 	train_sampler = RandomSampler(train_dataset)
@@ -232,7 +240,7 @@ print(f"Mean kfold_rhos: {np.mean(kfold_rhos)}")
 DROPOUT = 0.2
 LEARNING_RATE = 2e-5
 EPOCHS = 10
-BATCH_SIZE = 8
+BATCH_SIZE = 12
 
 def train_epoch_bert(train_loader, model, optimizer, device, scheduler=None):
 	train_loss = 0
@@ -341,7 +349,7 @@ for fold, (train_idx, valid_idx) in enumerate(kf_split):
 	_valid_inputs = [train_inputs[i][valid_idx] for i in range(3)]
 	_valid_targets = train_targets.loc[valid_idx, :].values
 
-	model = BERTRegressor(bert_path=BERT_PATH, dropout=DROPOUT, hidden_size=1536, output_size=30)
+	model = BERTRegressor(bert_path=BERT_PATH, dropout=DROPOUT, hidden_size=3072, output_size=30)
 	model.load_state_dict(all_models[fold].state_dict(), strict=False)
 	model.cuda()
 	model,best_rho = train_bert(model, _train_inputs, _train_targets, 
