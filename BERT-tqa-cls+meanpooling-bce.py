@@ -81,7 +81,7 @@ class BERTEmbedder(torch.nn.Module):
 		x = self.bert_layer(input_word_ids, input_masks, input_segments)[0]
 		h1 = x[:,0,:]
 		h2 = torch.mean(x[:,1:,:], dim=1)
-		return torch.cat([h1, h2], dim=0)
+		return torch.cat([h1, h2], dim=1)
 	
 class BERTRegressor(torch.nn.Module):
 	def __init__(self, bert_path, dropout, hidden_size, output_size):
@@ -95,7 +95,7 @@ class BERTRegressor(torch.nn.Module):
 		x = self.bert_layer(input_word_ids, input_masks, input_segments)[0]
 		h1 = x[:,0,:]
 		h2 = torch.mean(x[:,1:,:], dim=1)
-		x = torch.cat([h1, h2], dim=0)
+		x = torch.cat([h1, h2], dim=1)
 		x = self.dropout_layer(x)
 		x = self.linear_layer(x)
 		return self.activation(x)
