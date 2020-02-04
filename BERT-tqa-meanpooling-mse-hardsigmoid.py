@@ -65,7 +65,7 @@ class OutputMLP(torch.nn.Module):
 		super().__init__()
 		self.dropout_layer = torch.nn.Dropout(dropout)
 		self.linear_layer = torch.nn.Linear(input_size, output_size)
-		self.activation = torch.nn.Sigmoid()
+		self.activation = torch.nn.Hardtanh(min_val=0.0, max_val=1.0)
 	
 	def forward(self, input_data):
 		x = self.dropout_layer(input_data)
@@ -88,7 +88,7 @@ class BERTRegressor(torch.nn.Module):
 		self.bert_layer = BertModel.from_pretrained(bert_path)
 		self.dropout_layer = torch.nn.Dropout(dropout)
 		self.linear_layer = torch.nn.Linear(hidden_size, output_size)
-		self.activation = torch.nn.Sigmoid()
+		self.activation = torch.nn.Hardtanh(min_val=0.0, max_val=1.0)
 	
 	def forward(self, input_word_ids, input_masks, input_segments):
 		x = self.bert_layer(input_word_ids, input_masks, input_segments)[0]
@@ -115,7 +115,6 @@ bert_columns = train_tqa_bert_encoded.columns[1:]
 #######################################################################################################
 NUM_FOLDS = 5
 DROPOUT = 0.2
-ACTIVATION = "sigmoid"
 LEARNING_RATE = 5e-4
 EPOCHS = 100
 BATCH_SIZE = 32
