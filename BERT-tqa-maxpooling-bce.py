@@ -79,7 +79,7 @@ class BERTEmbedder(torch.nn.Module):
 	
 	def forward(self, input_word_ids, input_masks, input_segments):
 		x = self.bert_layer(input_word_ids, input_masks, input_segments)[0]
-		x = torch.max(x[:,1:,:], dim=1)
+		x = torch.max(x[:,1:,:], dim=1)[0]
 		return x
 	
 class BERTRegressor(torch.nn.Module):
@@ -92,7 +92,7 @@ class BERTRegressor(torch.nn.Module):
 	
 	def forward(self, input_word_ids, input_masks, input_segments):
 		x = self.bert_layer(input_word_ids, input_masks, input_segments)[0]
-		x = torch.max(x[:,1:,:], dim=1)
+		x = torch.max(x[:,1:,:], dim=1)[0]
 		x = self.dropout_layer(x)
 		x = self.linear_layer(x)
 		return self.activation(x)

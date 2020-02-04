@@ -115,7 +115,6 @@ bert_columns = train_tqa_bert_encoded.columns[1:]
 #######################################################################################################
 NUM_FOLDS = 5
 DROPOUT = 0.2
-ACTIVATION = "sigmoid"
 LEARNING_RATE = 5e-4
 EPOCHS = 100
 BATCH_SIZE = 32
