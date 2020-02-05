@@ -58,19 +58,18 @@ def compute_spearmanr(trues, preds):
 	return np.nanmean(rhos)
 
 def loss_function(predictions, targets):
-	return torch.nn.BCELoss()(predictions, targets)
+	return torch.nn.MSELoss()(predictions, targets)
 
 class OutputMLP(torch.nn.Module):
 	def __init__(self, dropout, input_size, output_size):
 		super().__init__()
 		self.dropout_layer = torch.nn.Dropout(dropout)
 		self.linear_layer = torch.nn.Linear(input_size, output_size)
-		self.activation = torch.nn.Hardtanh(min_val=0.0, max_val=1.0)
 	
 	def forward(self, input_data):
 		x = self.dropout_layer(input_data)
 		x = self.linear_layer(x)
-		return self.activation(x)
+		return x
 
 class BERTEmbedder(torch.nn.Module):
 	def __init__(self, bert_path):
@@ -79,7 +78,8 @@ class BERTEmbedder(torch.nn.Module):
 	
 	def forward(self, input_word_ids, input_masks, input_segments):
 		x = self.bert_layer(input_word_ids, input_masks, input_segments)[0]
-		return x[:,0]
+		x = torch.mean(x[:,1:,:], dim=1)
+		return x
 	
 class BERTRegressor(torch.nn.Module):
 	def __init__(self, bert_path, dropout, hidden_size, output_size):
@@ -87,25 +87,19 @@ class BERTRegressor(torch.nn.Module):
 		self.bert_layer = BertModel.from_pretrained(bert_path)
 		self.dropout_layer = torch.nn.Dropout(dropout)
 		self.linear_layer = torch.nn.Linear(hidden_size, output_size)
-		self.activation = torch.nn.Hardtanh(min_val=0.0, max_val=1.0)
 	
 	def forward(self, input_word_ids, input_masks, input_segments):
 		x = self.bert_layer(input_word_ids, input_masks, input_segments)[0]
-		x = self.dropout_layer(x[:,0])
+		x = torch.mean(x[:,1:,:], dim=1)
+		x = self.dropout_layer(x)
 		x = self.linear_layer(x)
-		return self.activation(x)
+		return x
 
 ####################################################################################################### 
 # loading data
 #######################################################################################################
 train = pd.read_csv("./input/train.csv")
 target_columns = list(train.columns[11:])
-for column in target_columns:
-    unique_values = np.sort(train[column].unique())
-    n_unique_values = len(unique_values)
-    replace_values = np.linspace(0., 1., n_unique_values)
-    mapping = {unique_values[i]:replace_values[i] for i in range(n_unique_values)}
-    train.loc[:, column] = train.loc[:, column].map(mapping)
 train_targets = train.loc[:, target_columns]
 
 model = BERTEmbedder(bert_path=BERT_PATH)
