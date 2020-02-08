@@ -83,7 +83,7 @@ class BERTRegressor(torch.nn.Module):
 		y = self.dropout_layer2(y[:,0])
 		y = self.linear_layer2(y)
 		y = self.activation2(y)
-		return torch.cat([x,y], dim=0)
+		return torch.cat([x,y], dim=1)
 
 ####################################################################################################### 
 # loading data
