@@ -61,17 +61,19 @@ def compute_spearmanr(trues, preds):
 	return np.nanmean(rhos), rhos
 
 def loss_function(predictions, targets):
-	return torch.nn.MSELoss()(predictions, targets)
+	return torch.nn.BCELoss()(predictions, targets)
 
 class OutputMLP(torch.nn.Module):
 	def __init__(self, dropout, input_size, output_size):
 		super().__init__()
 		self.dropout_layer = torch.nn.Dropout(dropout)
 		self.linear_layer = torch.nn.Linear(input_size, output_size)
+		self.activation = torch.nn.Sigmoid()
 	
 	def forward(self, input_data):
 		x = self.dropout_layer(input_data)
 		x = self.linear_layer(x)
+		x = self.activation(x)
 		return x
 
 class BERTEmbedder(torch.nn.Module):
@@ -89,11 +91,13 @@ class BERTRegressor(torch.nn.Module):
 		self.bert_layer = BertModel.from_pretrained(bert_path)
 		self.dropout_layer = torch.nn.Dropout(dropout)
 		self.linear_layer = torch.nn.Linear(hidden_size, output_size)
+		self.activation = torch.nn.Sigmoid()
 	
 	def forward(self, input_word_ids, input_masks, input_segments):
 		x = self.bert_layer(input_word_ids, input_masks, input_segments)[0]
 		x = self.dropout_layer(x[:,0])
 		x = self.linear_layer(x)
+		x = self.activation(x)
 		return x
 
 ####################################################################################################### 
