@@ -152,7 +152,7 @@ NUM_FOLDS = 5
 DROPOUT = 0.2
 LEARNING_RATE = 1e-6
 EPOCHS = 20
-BATCH_SIZE = 4
+BATCH_SIZE = 3
 
 def train_epoch_bert(train_loader, model, optimizer, device, scheduler=None):
 	train_loss = 0
