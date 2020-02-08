@@ -58,7 +58,7 @@ def compute_spearmanr(trues, preds):
 	rhos = []
 	for col_trues, col_pred in zip(trues.T, preds.T):
 			rhos.append(spearmanr(col_trues, col_pred).correlation)
-	return rhos, np.nanmean(rhos)
+	return np.nanmean(rhos), rhos
 
 def loss_function(predictions, targets):
 	return torch.nn.MSELoss()(predictions, targets)
