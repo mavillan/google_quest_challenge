@@ -162,7 +162,7 @@ def eval_epoch_mlp(valid_loader, model, device):
 def train_mlp(model_class, train_data, train_targets, 
 			  valid_data, valid_targets, epochs, batch_size, device,
 			  patience=0, restore_best_state=True):
-	model = model_class(dropout=DROPOUT, input_size=768, output_size=30)
+	model = model_class(dropout=DROPOUT, input_size=768, output_size=len(target_columns))
 	model.cuda()
 	train_dataset = TensorDataset(torch.tensor(train_data), torch.tensor(train_targets))
 	train_sampler = RandomSampler(train_dataset)
@@ -344,7 +344,7 @@ for fold, (train_idx, valid_idx) in enumerate(kf_split):
 	_valid_inputs = [train_inputs[i][valid_idx] for i in range(3)]
 	_valid_targets = train_targets.loc[valid_idx, :].values
 
-	model = BERTRegressor(bert_path=BERT_PATH, dropout=DROPOUT, hidden_size=768, output_size=30)
+	model = BERTRegressor(bert_path=BERT_PATH, dropout=DROPOUT, hidden_size=768, output_size=len(target_columns))
 	model.load_state_dict(all_models[fold].state_dict(), strict=False)
 	model.cuda()
 	model,best_rho,best_rhos = train_bert(model, _train_inputs, _train_targets, 
