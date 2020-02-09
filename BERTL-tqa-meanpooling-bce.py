@@ -226,7 +226,7 @@ print(f"Mean kfold_rhos: {np.mean(kfold_rhos)}")
 DROPOUT = 0.2
 LEARNING_RATE = 2e-5
 EPOCHS = 10
-BATCH_SIZE = 4
+BATCH_SIZE = 2
 
 def train_epoch_bert(train_loader, model, optimizer, device, scheduler=None):
 	train_loss = 0

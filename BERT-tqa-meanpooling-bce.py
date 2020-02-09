@@ -226,7 +226,7 @@ print(f"Mean kfold_rhos: {np.mean(kfold_rhos)}")
 #######################################################################################################
 DROPOUT = 0.2
 LEARNING_RATE = 2e-5
-EPOCHS = 10
+EPOCHS = 20
 BATCH_SIZE = 8
 
 def train_epoch_bert(train_loader, model, optimizer, device, scheduler=None):
@@ -341,7 +341,7 @@ for fold, (train_idx, valid_idx) in enumerate(kf_split):
 	model.cuda()
 	model,best_rho = train_bert(model, _train_inputs, _train_targets, 
 								_valid_inputs, _valid_targets, EPOCHS, BATCH_SIZE, device,
-								patience=2, restore_best_state=True)
+								patience=1, restore_best_state=True)
 	kfold_rhos.append(best_rho)
 	torch.save(model.state_dict(), MODELS_PATH + f"{FILENAME}-{fold}.pt")
 	del model; torch.cuda.empty_cache(); gc.collect()
