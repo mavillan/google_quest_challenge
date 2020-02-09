@@ -74,8 +74,8 @@ class BERTRegressor(torch.nn.Module):
 		self.dropout_layer4 = torch.nn.Dropout(dropout)
 
 		self.linear_layer1 = torch.nn.Linear(hidden_size, output_size1)
-		self.linear_layer2 = torch.nn.Linear(hidden_size, output_size2)
-		self.linear_layer3 = torch.nn.Linear(hidden_size, output_size3)
+		self.linear_layer2 = torch.nn.Linear(2*hidden_size, output_size2)
+		self.linear_layer3 = torch.nn.Linear(2*hidden_size, output_size3)
 		self.linear_layer4 = torch.nn.Linear(hidden_size, output_size4)
 	
 	def forward(self, 
@@ -152,7 +152,7 @@ NUM_FOLDS = 5
 DROPOUT = 0.2
 LEARNING_RATE = 1e-5
 EPOCHS = 20
-BATCH_SIZE = 4
+BATCH_SIZE = 3
 
 def train_epoch_bert(train_loader, model, optimizer, device, scheduler=None):
 	train_loss = 0
