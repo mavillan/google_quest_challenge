@@ -30,7 +30,7 @@ BERT_PATH = "./transformers/bert-base-uncased/"
 MAX_SEQUENCE_LENGTH = 512
 FILENAME = os.path.basename(__file__).split('.')[0]
 
-SEED = 42
+SEED = 19
 np.random.seed(SEED)
 torch.manual_seed(SEED)
 torch.cuda.manual_seed(SEED)
@@ -58,19 +58,18 @@ def compute_spearmanr(trues, preds):
 	return np.nanmean(rhos)
 
 def loss_function(predictions, targets):
-	return torch.nn.BCELoss()(predictions, targets)
+	return torch.nn.BCEWithLogitsLoss()(predictions, targets)
 
 class OutputMLP(torch.nn.Module):
 	def __init__(self, dropout, input_size, output_size):
 		super().__init__()
 		self.dropout_layer = torch.nn.Dropout(dropout)
 		self.linear_layer = torch.nn.Linear(input_size, output_size)
-		self.activation = torch.nn.Sigmoid()
 	
 	def forward(self, input_data):
 		x = self.dropout_layer(input_data)
 		x = self.linear_layer(x)
-		return self.activation(x)
+		return x
 
 class BERTEmbedder(torch.nn.Module):
 	def __init__(self, bert_path):
@@ -79,7 +78,7 @@ class BERTEmbedder(torch.nn.Module):
 	
 	def forward(self, input_word_ids, input_masks, input_segments):
 		x = self.bert_layer(input_word_ids, input_masks, input_segments)[0]
-		x = torch.mean(x[:,1:,:], dim=1)
+		x = torch.mean(x[:,:,:], dim=1)
 		return x
 	
 class BERTRegressor(torch.nn.Module):
@@ -88,14 +87,13 @@ class BERTRegressor(torch.nn.Module):
 		self.bert_layer = BertModel.from_pretrained(bert_path)
 		self.dropout_layer = torch.nn.Dropout(dropout)
 		self.linear_layer = torch.nn.Linear(hidden_size, output_size)
-		self.activation = torch.nn.Sigmoid()
 	
 	def forward(self, input_word_ids, input_masks, input_segments):
 		x = self.bert_layer(input_word_ids, input_masks, input_segments)[0]
-		x = torch.mean(x[:,1:,:], dim=1)
+		x = torch.mean(x[:,:,:], dim=1)
 		x = self.dropout_layer(x)
 		x = self.linear_layer(x)
-		return self.activation(x)
+		return x
 
 ####################################################################################################### 
 # loading data
