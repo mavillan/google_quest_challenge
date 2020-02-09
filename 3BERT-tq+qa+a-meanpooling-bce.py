@@ -86,18 +86,18 @@ class BERTRegressor(torch.nn.Module):
 		y = self.bert_layer2(input_word_ids2, input_masks2, input_segments2)[0]
 		z = self.bert_layer3(input_word_ids3, input_masks3, input_segments3)[0]
 		# output 1
-		dp1 = self.dropout_layer1(torch.mean(x[:,:,:], dim=1))
+		dp1 = self.dropout_layer1(torch.mean(x, dim=1))
 		o1 = self.linear_layer1(dp1)
 		# output 2
-		dp2 = self.dropout_layer2(torch.cat([torch.mean(x[:,:,:], dim=1), 
-											 torch.mean(y[:,:,:], dim=1)], dim=1))
+		dp2 = self.dropout_layer2(torch.cat([torch.mean(x, dim=1), 
+											 torch.mean(y, dim=1)], dim=1))
 		o2 = self.linear_layer2(dp2)
 		# output 3
-		dp3 = self.dropout_layer3(torch.cat([torch.mean(y[:,:,:], dim=1), 
-											 torch.mean(z[:,:,:], dim=1)], dim=1))
+		dp3 = self.dropout_layer3(torch.cat([torch.mean(y, dim=1), 
+											 torch.mean(z, dim=1)], dim=1))
 		o3 = self.linear_layer3(dp3)
 		# output 4
-		dp4 = self.dropout_layer4(torch.mean(z[:,:,:], dim=1))
+		dp4 = self.dropout_layer4(torch.mean(z, dim=1))
 		o4 = self.linear_layer4(dp4)
 		
 		return torch.cat([o1, o2, o3, o4], dim=1)
@@ -152,7 +152,7 @@ train_targets = train.loc[:, columns_set1+columns_set2+columns_set3+columns_set4
 #######################################################################################################
 NUM_FOLDS = 5
 DROPOUT = 0.2
-LEARNING_RATE = 1e-5
+LEARNING_RATE = 2e-5
 EPOCHS = 20
 BATCH_SIZE = 3
 
