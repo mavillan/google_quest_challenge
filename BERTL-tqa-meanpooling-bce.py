@@ -340,7 +340,7 @@ for fold, (train_idx, valid_idx) in enumerate(kf_split):
 	model.cuda()
 	model,best_rho = train_bert(model, _train_inputs, _train_targets, 
 								_valid_inputs, _valid_targets, EPOCHS, BATCH_SIZE, device,
-								patience=2, restore_best_state=True)
+								patience=1, restore_best_state=True)
 	kfold_rhos.append(best_rho)
 	torch.save(model.state_dict(), MODELS_PATH + f"{FILENAME}-{fold}.pt")
 	del model; torch.cuda.empty_cache(); gc.collect()
