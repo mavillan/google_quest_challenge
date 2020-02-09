@@ -58,7 +58,7 @@ def compute_spearmanr(trues, preds):
 	return np.nanmean(rhos), rhos
 
 def loss_function(predictions, targets):
-	return torch.nn.BCELoss()(predictions, targets)
+	return torch.nn.BCEWithLogitsLoss()(predictions, targets)
 	
 class BERTRegressor(torch.nn.Module):
 	def __init__(self, bert_path, dropout, hidden_size, output_size1, output_size2):
@@ -69,8 +69,6 @@ class BERTRegressor(torch.nn.Module):
 		self.dropout_layer2 = torch.nn.Dropout(dropout)
 		self.linear_layer1 = torch.nn.Linear(hidden_size, output_size1)
 		self.linear_layer2 = torch.nn.Linear(hidden_size, output_size2)
-		self.activation1 = torch.nn.Sigmoid()
-		self.activation2 = torch.nn.Sigmoid()
 	
 	def forward(self, 
 				input_word_ids1, input_masks1, input_segments1,
@@ -78,11 +76,9 @@ class BERTRegressor(torch.nn.Module):
 		x = self.bert_layer1(input_word_ids1, input_masks1, input_segments1)[0]
 		x = self.dropout_layer1(x[:,0])
 		x = self.linear_layer1(x)
-		x = self.activation1(x)
 		y = self.bert_layer2(input_word_ids2, input_masks2, input_segments2)[0]
 		y = self.dropout_layer2(y[:,0])
 		y = self.linear_layer2(y)
-		y = self.activation2(y)
 		return torch.cat([x,y], dim=1)
 
 ####################################################################################################### 
@@ -97,7 +93,7 @@ train_targets = train.loc[:, target_columns]
 #######################################################################################################
 NUM_FOLDS = 5
 DROPOUT = 0.2
-LEARNING_RATE = 1e-5
+LEARNING_RATE = 2e-5
 EPOCHS = 25
 BATCH_SIZE = 6
 
@@ -244,7 +240,7 @@ for fold, (train_idx, valid_idx) in enumerate(kf_split):
 						  output_size1=21, output_size2=9)
 	model.cuda()
 	model,best_rho,best_rhos = train_bert(model, _train_inputs, _train_targets, _valid_inputs, 
-										  _valid_targets, EPOCHS, BATCH_SIZE, device, patience=2, 
+										  _valid_targets, EPOCHS, BATCH_SIZE, device, patience=1, 
 										  restore_best_state=True)
 	kfold_rho.append(best_rho)
 	kfold_rhos.append(best_rhos)
