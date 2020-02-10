@@ -26,7 +26,7 @@ from bert_embedder import (compute_input_arrays,
 						   compute_input_arrays_2s)
 ###
 MODELS_PATH = "./models/" 
-BERT_PATH = "./transformers/bert-base-uncased/"
+BERT_PATH = "./transformers/bert-large-uncased/"
 MAX_SEQUENCE_LENGTH = 512
 FILENAME = os.path.basename(__file__).split('.')[0]
 
@@ -238,7 +238,7 @@ for fold, (train_idx, valid_idx) in enumerate(kf_split):
 	_valid_inputs = [train_inputs[i][valid_idx] for i in range(6)]
 	_valid_targets = train_targets.loc[valid_idx, :].values
 
-	model = BERTRegressor(bert_path=BERT_PATH, dropout=DROPOUT, hidden_size=768, 
+	model = BERTRegressor(bert_path=BERT_PATH, dropout=DROPOUT, hidden_size=1024, 
 						  output_size1=21, output_size2=9)
 	model.cuda()
 	model,best_rho,best_rhos = train_bert(model, _train_inputs, _train_targets, _valid_inputs, 
