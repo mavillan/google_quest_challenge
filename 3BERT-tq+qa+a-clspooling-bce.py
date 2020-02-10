@@ -150,7 +150,7 @@ train_targets = train.loc[:, columns_set1+columns_set2+columns_set3+columns_set4
 #######################################################################################################
 NUM_FOLDS = 5
 DROPOUT = 0.2
-LEARNING_RATE = 1e-5
+LEARNING_RATE = 2e-5
 EPOCHS = 20
 BATCH_SIZE = 3
 

@@ -30,7 +30,7 @@ BERT_PATH = "./transformers/bert-base-uncased/"
 MAX_SEQUENCE_LENGTH = 512
 FILENAME = os.path.basename(__file__).split('.')[0]
 
-SEED = 42
+SEED = 2
 np.random.seed(SEED)
 torch.manual_seed(SEED)
 torch.cuda.manual_seed(SEED)
