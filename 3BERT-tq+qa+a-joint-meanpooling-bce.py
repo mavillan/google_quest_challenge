@@ -83,10 +83,10 @@ class BERTRegressor(torch.nn.Module):
 		z = self.bert_layer3(input_word_ids3, input_masks3, input_segments3)[0]
 		z = torch.mean(z[:,:,:], dim=1)
 		# output 1
-		dp1 = self.dropout_layer1(x)
+		dp1 = self.dropout_layer1(torch.cat([x,y], dim=1))
 		o1 = self.linear_layer1(dp1)
 		# output 2
-		dp2 = self.dropout_layer2(torch.cat([x,y], dim=1))
+		dp2 = self.dropout_layer2(torch.cat([y,z], dim=1))
 		o2 = self.linear_layer2(dp2)
 		
 		return torch.cat([o1, o2], dim=1)
