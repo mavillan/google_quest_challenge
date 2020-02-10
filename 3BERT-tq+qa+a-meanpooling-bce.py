@@ -98,7 +98,7 @@ class BERTRegressor(torch.nn.Module):
 		dp3 = self.dropout_layer3(torch.cat([y,z], dim=1))
 		o3 = self.linear_layer3(dp3)
 		# output 4
-		dp4 = self.dropout_layer4(torch.mean(z, dim=1))
+		dp4 = self.dropout_layer4(z, dim=1)
 		o4 = self.linear_layer4(dp4)
 		
 		return torch.cat([o1, o2, o3, o4], dim=1)
